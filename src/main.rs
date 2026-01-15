@@ -31,9 +31,13 @@ struct Args {
     #[arg(long)]
     dry_run: bool,
 
-    /// Skip confirmation modal
+    /// Skip confirmation modal and sync all
     #[arg(long, short = 'y')]
     yes: bool,
+
+    /// Also clone forks that aren't present locally (by default, only syncs existing clones)
+    #[arg(long)]
+    clone_missing: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -318,16 +322,32 @@ fn main() -> Result<()> {
     let tool_home = get_tool_home(args.tool_home)?;
 
     println!("Fetching your GitHub forks...");
-    let forks = fetch_forks(&tool_home)?;
+    let all_forks = fetch_forks(&tool_home)?;
+
+    // By default, only show forks that are cloned locally
+    let forks: Vec<Fork> = if args.clone_missing {
+        all_forks
+    } else {
+        all_forks.into_iter().filter(|f| f.is_cloned).collect()
+    };
 
     if forks.is_empty() {
-        println!("No forks found.");
+        if args.clone_missing {
+            println!("No forks found.");
+        } else {
+            println!("No locally cloned forks found. Use --clone-missing to include uncloned forks.");
+        }
         return Ok(());
     }
 
     println!(
-        "Found {} forks. Tool home: {}",
+        "Found {} {}. Tool home: {}",
         forks.len(),
+        if args.clone_missing {
+            "forks"
+        } else {
+            "locally cloned forks"
+        },
         tool_home.display()
     );
     println!("Launching TUI...");
