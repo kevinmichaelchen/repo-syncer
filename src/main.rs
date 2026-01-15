@@ -22,6 +22,7 @@ use std::{
 #[derive(Parser)]
 #[command(name = "repo-syncer")]
 #[command(about = "Interactive TUI to sync GitHub forks with their upstream repositories")]
+#[allow(clippy::struct_excessive_bools)]
 struct Args {
     /// Home directory for cloned repos (default: $HOME/dev)
     #[arg(long, env = "TOOL_HOME")]
@@ -38,6 +39,10 @@ struct Args {
     /// Also clone forks that aren't present locally (by default, only syncs existing clones)
     #[arg(long)]
     clone_missing: bool,
+
+    /// List forks that aren't cloned locally and exit
+    #[arg(long)]
+    list_uncloned: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -324,6 +329,30 @@ fn main() -> Result<()> {
     println!("Fetching your GitHub forks...");
     let all_forks = fetch_forks(&tool_home)?;
 
+    // Handle --list-uncloned: just print uncloned forks and exit
+    if args.list_uncloned {
+        let uncloned: Vec<&Fork> = all_forks.iter().filter(|f| !f.is_cloned).collect();
+        if uncloned.is_empty() {
+            println!("All {} forks are cloned locally.", all_forks.len());
+        } else {
+            println!(
+                "Found {} uncloned forks (out of {} total):\n",
+                uncloned.len(),
+                all_forks.len()
+            );
+            for fork in &uncloned {
+                println!(
+                    "  {}/{} -> {}",
+                    fork.parent_owner,
+                    fork.name,
+                    fork.local_path.display()
+                );
+            }
+            println!("\nUse --clone-missing to include these in the sync.");
+        }
+        return Ok(());
+    }
+
     // By default, only show forks that are cloned locally
     let forks: Vec<Fork> = if args.clone_missing {
         all_forks
@@ -335,7 +364,9 @@ fn main() -> Result<()> {
         if args.clone_missing {
             println!("No forks found.");
         } else {
-            println!("No locally cloned forks found. Use --clone-missing to include uncloned forks.");
+            println!(
+                "No locally cloned forks found. Use --clone-missing to include uncloned forks."
+            );
         }
         return Ok(());
     }

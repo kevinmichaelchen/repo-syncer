@@ -42,6 +42,9 @@ repo-syncer --dry-run
 # Include forks you haven't cloned yet (will clone them)
 repo-syncer --clone-missing
 
+# List forks you haven't cloned (useful for discovery)
+repo-syncer --list-uncloned
+
 # Custom directory for cloned repos (default: ~/dev)
 repo-syncer --tool-home ~/projects
 ```
@@ -76,6 +79,7 @@ If there are unpushed commits that would conflict, it skips that repo and moves 
 | `--dry-run`       |             | `false` | Preview without changes                 |
 | `--yes` `-y`      |             | `false` | Skip confirmation, sync all             |
 | `--clone-missing` |             | `false` | Include and clone forks not yet on disk |
+| `--list-uncloned` |             | `false` | List uncloned forks and exit            |
 
 ## License
 
