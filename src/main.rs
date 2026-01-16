@@ -1,4 +1,5 @@
 mod app;
+mod cache;
 mod cli;
 mod github;
 mod sync;
@@ -6,6 +7,7 @@ mod types;
 mod ui;
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use clap::Parser;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
@@ -13,20 +15,22 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::prelude::*;
-use std::{env, io, sync::mpsc, time::Duration};
+use std::{env, io, sync::mpsc, thread, time::Duration};
 
 use app::App;
+use cache::Cache;
 use cli::Args;
-use github::fetch_forks;
+use github::fetch_forks_graphql;
 use sync::{archive_fork_async, clone_fork_async, start_syncing};
-use types::{ModalAction, Mode, SyncResult};
+use types::{CacheStatus, Fork, ModalAction, Mode, SyncResult};
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    let tool_home = get_tool_home(args.tool_home)?;
+    let tool_home = get_tool_home(args.tool_home.clone())?;
 
-    println!("Fetching your GitHub forks...");
-    let forks = fetch_forks(&tool_home)?;
+    // Try to load from cache first
+    let cache = Cache::open().ok();
+    let (forks, cache_status) = load_forks_with_cache(cache.as_ref(), &tool_home, args.refresh)?;
 
     if forks.is_empty() {
         println!("No forks found.");
@@ -35,11 +39,18 @@ fn main() -> Result<()> {
 
     let cloned_count = forks.iter().filter(|f| f.is_cloned).count();
     let uncloned_count = forks.len() - cloned_count;
+    let cache_msg = match cache_status {
+        CacheStatus::Fresh => "(cached)",
+        CacheStatus::Stale { refreshing: true } => "(refreshing...)",
+        CacheStatus::Stale { refreshing: false } => "(stale)",
+        CacheStatus::Offline => "(offline)",
+    };
     println!(
-        "Found {} forks ({} cloned, {} uncloned). Tool home: {}",
+        "Found {} forks ({} cloned, {} uncloned) {} Tool home: {}",
         forks.len(),
         cloned_count,
         uncloned_count,
+        cache_msg,
         tool_home.display()
     );
     println!("Launching TUI...");
@@ -50,7 +61,7 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new(forks, args.dry_run, tool_home);
+    let mut app = App::new(forks, args.dry_run, tool_home.clone(), cache_status);
 
     // Skip to syncing if --yes flag is set (only sync cloned forks)
     if args.yes {
@@ -105,6 +116,97 @@ fn get_tool_home(args_tool_home: Option<std::path::PathBuf>) -> Result<std::path
     Ok(std::path::PathBuf::from(home).join("dev"))
 }
 
+/// Load forks with cache support.
+/// Returns (forks, `cache_status`) tuple.
+fn load_forks_with_cache(
+    cache: Option<&Cache>,
+    tool_home: &std::path::Path,
+    force_refresh: bool,
+) -> Result<(Vec<Fork>, CacheStatus)> {
+    // If no cache available, fetch directly
+    let Some(cache) = cache else {
+        let forks = fetch_forks_graphql(tool_home)?;
+        return Ok((forks, CacheStatus::Fresh));
+    };
+
+    // Check if we should use cache or refresh
+    let cache_empty = cache.is_empty().unwrap_or(true);
+
+    if force_refresh || cache_empty {
+        // Fetch fresh data from GitHub
+        match fetch_forks_graphql(tool_home) {
+            Ok(forks) => {
+                // Save to cache
+                if let Err(e) = cache.save_forks(&forks) {
+                    eprintln!("Warning: Failed to save to cache: {e}");
+                }
+                if let Err(e) = cache.set_last_full_sync(Utc::now()) {
+                    eprintln!("Warning: Failed to update last sync time: {e}");
+                }
+                Ok((forks, CacheStatus::Fresh))
+            }
+            Err(e) => {
+                // If fetch failed but we have cache, use it
+                if cache_empty {
+                    Err(e)
+                } else {
+                    eprintln!("Warning: GitHub fetch failed, using cache: {e}");
+                    let forks = cache.load_forks(tool_home)?;
+                    Ok((forks, CacheStatus::Offline))
+                }
+            }
+        }
+    } else {
+        // Load from cache
+        let forks = cache.load_forks(tool_home)?;
+
+        // Check if cache is stale (older than 24 hours)
+        let is_stale = cache
+            .last_full_sync()
+            .ok()
+            .flatten()
+            .is_none_or(|last_sync| {
+                let age = Utc::now() - last_sync;
+                age.num_hours() >= 24
+            });
+
+        let cache_status = if is_stale {
+            CacheStatus::Stale { refreshing: false }
+        } else {
+            CacheStatus::Fresh
+        };
+
+        Ok((forks, cache_status))
+    }
+}
+
+/// Start a background refresh from GitHub.
+fn start_background_refresh(
+    tool_home: std::path::PathBuf,
+    cache: Option<Cache>,
+    tx: mpsc::Sender<SyncResult>,
+) {
+    thread::spawn(move || {
+        match fetch_forks_graphql(&tool_home) {
+            Ok(forks) => {
+                // Save to cache
+                if let Some(cache) = &cache {
+                    if let Err(e) = cache.save_forks(&forks) {
+                        eprintln!("Warning: Failed to save to cache: {e}");
+                    }
+                    if let Err(e) = cache.set_last_full_sync(Utc::now()) {
+                        eprintln!("Warning: Failed to update last sync time: {e}");
+                    }
+                }
+                let _ = tx.send(SyncResult::ForksRefreshed(forks));
+            }
+            Err(e) => {
+                let _ = tx.send(SyncResult::RefreshFailed(e.to_string()));
+            }
+        }
+    });
+}
+
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
     let (tx, rx) = mpsc::channel::<SyncResult>();
 
@@ -133,6 +235,19 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> 
                 SyncResult::ForkArchived(idx) => {
                     app.remove_fork(idx);
                     app.show_message("Fork archived!");
+                }
+                SyncResult::ForksRefreshed(new_forks) => {
+                    // Update forks list from background refresh
+                    let len = new_forks.len();
+                    app.forks = new_forks;
+                    app.statuses = vec![types::SyncStatus::Pending; len];
+                    app.selected = vec![false; len];
+                    app.update_search();
+                    app.cache_status = CacheStatus::Fresh;
+                    app.show_message("Forks refreshed!");
+                }
+                SyncResult::RefreshFailed(err) => {
+                    app.show_message(&format!("Refresh failed: {err}"));
                 }
             }
             if app.is_all_done() && app.mode == Mode::Syncing {
@@ -186,7 +301,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> 
 fn handle_selecting_mode(
     app: &mut App,
     key: KeyCode,
-    _tx: &mpsc::Sender<SyncResult>,
+    tx: &mpsc::Sender<SyncResult>,
 ) -> Result<Option<Result<()>>> {
     match key {
         KeyCode::Char('q') | KeyCode::Esc => return Ok(Some(Ok(()))),
@@ -251,6 +366,13 @@ fn handle_selecting_mode(
                 app.modal_action = ModalAction::Archive;
                 app.mode = Mode::ConfirmModal;
             }
+        }
+        KeyCode::Char('R') => {
+            // Start background refresh from GitHub
+            app.cache_status = CacheStatus::Stale { refreshing: true };
+            app.show_message("Refreshing from GitHub...");
+            let cache = Cache::open().ok();
+            start_background_refresh(app.tool_home.clone(), cache, tx.clone());
         }
         _ => {}
     }

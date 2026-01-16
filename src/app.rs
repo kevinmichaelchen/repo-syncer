@@ -1,4 +1,4 @@
-use crate::types::{Fork, ForkStats, ModalAction, Mode, SyncStatus};
+use crate::types::{CacheStatus, Fork, ForkStats, ModalAction, Mode, SyncStatus};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use ratatui::widgets::TableState;
@@ -28,10 +28,12 @@ pub struct App {
     pub stats_cache: Option<ForkStats>,
     // Status message
     pub status_message: Option<(String, Instant)>,
+    // Cache status
+    pub cache_status: CacheStatus,
 }
 
 impl App {
-    pub fn new(forks: Vec<Fork>, dry_run: bool, tool_home: PathBuf) -> Self {
+    pub fn new(forks: Vec<Fork>, dry_run: bool, tool_home: PathBuf, cache_status: CacheStatus) -> Self {
         let len = forks.len();
         let mut state = TableState::default();
         if !forks.is_empty() {
@@ -55,6 +57,7 @@ impl App {
             fuzzy_matcher: SkimMatcherV2::default(),
             stats_cache: None,
             status_message: None,
+            cache_status,
         }
     }
 

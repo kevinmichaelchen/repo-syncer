@@ -16,4 +16,8 @@ pub struct Args {
     /// Skip confirmation modal and sync all
     #[arg(long, short = 'y')]
     pub yes: bool,
+
+    /// Force refresh from GitHub (ignore cache)
+    #[arg(long, short = 'r')]
+    pub refresh: bool,
 }

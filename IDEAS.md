@@ -10,6 +10,7 @@ These ideas have been implemented:
 - ✅ **Interactive Filtering** - `/` to fuzzy search by name
 - ✅ **Batch Operations** - Archive, clone, open in browser/editor
 - ✅ **Modular Architecture** - Split into focused modules (cli, types, github, sync, app, ui)
+- ✅ **SQLite Caching** - Cache fork metadata locally for instant startup and offline mode
 
 ---
 
@@ -34,39 +35,23 @@ Expand the statistics view with:
 - **Size breakdown** - disk usage per fork
 - **Sync history** - track success/failure over time
 
-## SQLite Caching
+## GitHub Stars Manager
 
-Cache fork metadata locally to:
+Extend beyond forks to manage GitHub stars:
 
-- Avoid repeated GitHub API calls (rate limits)
-- Enable offline browsing of fork list
-- Track sync history over time
-- Store LLM-generated categories persistently
+- **Browse starred repos** - Same TUI experience for stars
+- **Semantic search with HELIX-DB** - Vector embeddings for finding repos by concept, not just name
+- **Categories from embeddings** - Automatically cluster similar repos
+- **Star/unstar from TUI** - Manage stars without leaving the terminal
+- **Cross-reference** - Find stars related to your forks
 
-Schema idea:
+[HELIX-DB](https://github.com/helixdb/helix-db) would enable semantic queries like:
 
-```sql
-CREATE TABLE forks (
-  id TEXT PRIMARY KEY,
-  name TEXT,
-  owner TEXT,
-  parent_owner TEXT,
-  language TEXT,
-  description TEXT,
-  category TEXT,
-  last_synced_at DATETIME,
-  created_at DATETIME,
-  updated_at DATETIME
-);
+- "Show me repos about state machines"
+- "Find testing utilities for TypeScript"
+- "Repos similar to X"
 
-CREATE TABLE sync_history (
-  id INTEGER PRIMARY KEY,
-  fork_id TEXT,
-  synced_at DATETIME,
-  status TEXT,
-  commits_pulled INTEGER
-);
-```
+Index repo name, description, README, and topics into embeddings for powerful discovery.
 
 ## Advanced Filtering
 

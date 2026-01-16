@@ -1,5 +1,5 @@
 use crate::app::App;
-use crate::types::{ModalAction, Mode, SyncStatus};
+use crate::types::{CacheStatus, ModalAction, Mode, SyncStatus};
 use ratatui::{
     prelude::*,
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Cell, Clear, Paragraph, Row, Table},
@@ -61,12 +61,19 @@ pub fn render(f: &mut Frame, app: &mut App) {
 }
 
 fn render_title(f: &mut Frame, app: &App, area: Rect) {
+    let cache_indicator = match &app.cache_status {
+        CacheStatus::Fresh => "",
+        CacheStatus::Stale { refreshing: true } => " (refreshing...)",
+        CacheStatus::Stale { refreshing: false } => " (cached)",
+        CacheStatus::Offline => " (offline)",
+    };
+
     let title = match app.mode {
         Mode::Selecting | Mode::ConfirmModal | Mode::Search | Mode::StatsOverlay => {
             let cloned = app.forks.iter().filter(|f| f.is_cloned).count();
             let uncloned = app.forks.len() - cloned;
             format!(
-                " Repo Syncer {} | {} forks ({} cloned, {} uncloned) | {} selected ",
+                " Repo Syncer {} | {} forks ({} cloned, {} uncloned) | {} selected{cache_indicator} ",
                 if app.dry_run { "[DRY RUN]" } else { "" },
                 app.forks.len(),
                 cloned,
@@ -276,7 +283,7 @@ fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
             if let Some((msg, _)) = &app.status_message {
                 msg.as_str()
             } else {
-                "j/k: Nav | Space: Select | a: All | Enter: Sync | c: Clone | o: Open | e: Edit | /: Search | d: Stats | q: Quit"
+                "j/k: Nav | Space: Select | a: All | Enter: Sync | c: Clone | o: Open | e: Edit | /: Search | d: Stats | R: Refresh | q: Quit"
             }
         }
         Mode::Search => "Type to filter | Enter: Confirm | Esc: Cancel",

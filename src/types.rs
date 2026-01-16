@@ -1,43 +1,5 @@
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
 use std::path::PathBuf;
-
-// ============================================================
-// GITHUB API TYPES
-// ============================================================
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GhFork {
-    pub name: String,
-    pub owner: GhOwner,
-    pub parent: Option<GhParent>,
-    pub default_branch_ref: Option<GhBranchRef>,
-    pub is_archived: bool,
-    pub description: Option<String>,
-    pub primary_language: Option<GhLanguage>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct GhOwner {
-    pub login: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GhParent {
-    pub name: String,
-    pub owner: GhOwner,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct GhBranchRef {
-    pub name: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct GhLanguage {
-    pub name: String,
-}
 
 // ============================================================
 // APPLICATION TYPES
@@ -54,6 +16,15 @@ pub struct Fork {
     pub is_cloned: bool,
     pub description: Option<String>,
     pub primary_language: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CacheStatus {
+    Fresh,
+    Stale { refreshing: bool },
+    Offline,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -125,4 +96,6 @@ pub enum SyncResult {
     StatusUpdate(usize, SyncStatus),
     ForkCloned(usize),
     ForkArchived(usize),
+    ForksRefreshed(Vec<Fork>),
+    RefreshFailed(String),
 }
