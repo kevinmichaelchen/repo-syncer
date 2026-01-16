@@ -1,5 +1,29 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+// ============================================================
+// STORAGE TRAIT
+// ============================================================
+
+/// Trait for fork metadata storage backends.
+/// Implementations can use `SQLite`, `HelixDB`, or any other datastore.
+pub trait ForkStore: Send {
+    /// Load all forks from storage.
+    fn load_forks(&self, tool_home: &Path) -> Result<Vec<Fork>>;
+
+    /// Save multiple forks to storage.
+    fn save_forks(&self, forks: &[Fork]) -> Result<()>;
+
+    /// Check if the store is empty.
+    fn is_empty(&self) -> Result<bool>;
+
+    /// Get the timestamp of the last full sync.
+    fn last_full_sync(&self) -> Result<Option<DateTime<Utc>>>;
+
+    /// Set the timestamp of the last full sync.
+    fn set_last_full_sync(&self, when: DateTime<Utc>) -> Result<()>;
+}
 
 // ============================================================
 // APPLICATION TYPES

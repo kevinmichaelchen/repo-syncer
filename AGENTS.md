@@ -28,7 +28,9 @@ src/
   each)
 - **No async runtime**: Uses `std::thread` and `mpsc` channels for background
   operations
-- **SQLite caching**: Fork metadata cached at `~/.cache/repo-syncer/forks.db`
+- **Pluggable storage**: `ForkStore` trait in `types.rs` abstracts storage
+  backends
+- **SQLite default**: `SqliteStore` in `cache.rs` implements `ForkStore`
 - **GitHub GraphQL API**: Used for sorted fork fetching (via `gh api graphql`)
 - **Offline support**: Works with cached data when GitHub is unavailable
 
@@ -115,11 +117,33 @@ Git operations are in `sync.rs`. The `sync_single_fork()` function:
 
 Always ensure state restoration happens even on error paths.
 
-### Adding Cache Operations
+### Adding a New Storage Backend
 
-Cache operations are in `cache.rs`. The `Cache` struct provides:
+Storage is abstracted via the `ForkStore` trait in `types.rs`:
 
-- `open()` - Open or create the database
+```rust
+pub trait ForkStore: Send {
+    fn load_forks(&self, tool_home: &Path) -> Result<Vec<Fork>>;
+    fn save_forks(&self, forks: &[Fork]) -> Result<()>;
+    fn is_empty(&self) -> Result<bool>;
+    fn last_full_sync(&self) -> Result<Option<DateTime<Utc>>>;
+    fn set_last_full_sync(&self, when: DateTime<Utc>) -> Result<()>;
+}
+```
+
+To add a new backend (e.g., `HelixDB`):
+
+1. Create `src/helix.rs` with a struct implementing `ForkStore`
+2. Add `mod helix;` to `main.rs`
+3. Replace `SqliteStore::open()` with your store constructor
+
+No changes needed to `app.rs`, `sync.rs`, or other modules.
+
+### Current Storage Implementation
+
+The default `SqliteStore` in `cache.rs` provides:
+
+- `open()` - Open or create the database at `~/.cache/repo-syncer/forks.db`
 - `load_forks()` - Load all cached forks
 - `save_forks()` - Save forks to cache
 - `last_full_sync()` / `set_last_full_sync()` - Track refresh times

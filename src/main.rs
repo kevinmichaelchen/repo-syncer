@@ -18,18 +18,18 @@ use ratatui::prelude::*;
 use std::{env, io, sync::mpsc, thread, time::Duration};
 
 use app::App;
-use cache::Cache;
+use cache::SqliteStore;
 use cli::Args;
 use github::fetch_forks_graphql;
 use sync::{archive_fork_async, clone_fork_async, start_syncing};
-use types::{CacheStatus, Fork, ModalAction, Mode, SyncResult};
+use types::{CacheStatus, Fork, ForkStore, ModalAction, Mode, SyncResult};
 
 fn main() -> Result<()> {
     let args = Args::parse();
     let tool_home = get_tool_home(args.tool_home.clone())?;
 
     // Try to load from cache first
-    let cache = Cache::open().ok();
+    let cache = SqliteStore::open().ok();
     let (forks, cache_status) = load_forks_with_cache(cache.as_ref(), &tool_home, args.refresh)?;
 
     if forks.is_empty() {
@@ -119,7 +119,7 @@ fn get_tool_home(args_tool_home: Option<std::path::PathBuf>) -> Result<std::path
 /// Load forks with cache support.
 /// Returns (forks, `cache_status`) tuple.
 fn load_forks_with_cache(
-    cache: Option<&Cache>,
+    cache: Option<&SqliteStore>,
     tool_home: &std::path::Path,
     force_refresh: bool,
 ) -> Result<(Vec<Fork>, CacheStatus)> {
@@ -183,7 +183,7 @@ fn load_forks_with_cache(
 /// Start a background refresh from GitHub.
 fn start_background_refresh(
     tool_home: std::path::PathBuf,
-    cache: Option<Cache>,
+    cache: Option<SqliteStore>,
     tx: mpsc::Sender<SyncResult>,
 ) {
     thread::spawn(move || {
@@ -371,7 +371,7 @@ fn handle_selecting_mode(
             // Start background refresh from GitHub
             app.cache_status = CacheStatus::Stale { refreshing: true };
             app.show_message("Refreshing from GitHub...");
-            let cache = Cache::open().ok();
+            let cache = SqliteStore::open().ok();
             start_background_refresh(app.tool_home.clone(), cache, tx.clone());
         }
         _ => {}
