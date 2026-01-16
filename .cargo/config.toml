@@ -1,4 +1,0 @@
-# Use sccache for faster builds
-# Install with: cargo install sccache
-[build]
-rustc-wrapper = "sccache"

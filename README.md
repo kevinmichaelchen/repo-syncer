@@ -69,6 +69,7 @@ repo-syncer --tool-home ~/projects
 | `e`     | Open in editor ($EDITOR)         |
 | `x`     | Archive fork (with confirmation) |
 | `d`     | Toggle stats dashboard           |
+| `R`     | Refresh from GitHub              |
 
 ### General
 
@@ -121,13 +122,24 @@ Press `d` to see a statistics overlay showing:
 
 All actions are non-blocking and run asynchronously in the background.
 
+### SQLite Caching
+
+Fork metadata is cached locally at `~/.cache/repo-syncer/forks.db` for:
+
+- **Instant startup** - No waiting for GitHub API on every launch
+- **Offline mode** - Browse and manage forks without network access
+- **Background refresh** - Press `R` to update from GitHub in the background
+
+The title bar shows cache status: `(cached)`, `(refreshing...)`, or `(offline)`.
+
 ## Configuration
 
-| Flag          | Env Var     | Default | Description                        |
-| ------------- | ----------- | ------- | ---------------------------------- |
-| `--tool-home` | `TOOL_HOME` | `~/dev` | Where repos are cloned             |
-| `--dry-run`   |             | `false` | Preview without changes            |
-| `--yes` `-y`  |             | `false` | Skip confirmation, sync all cloned |
+| Flag             | Env Var     | Default | Description                        |
+| ---------------- | ----------- | ------- | ---------------------------------- |
+| `--tool-home`    | `TOOL_HOME` | `~/dev` | Where repos are cloned             |
+| `--dry-run`      |             | `false` | Preview without changes            |
+| `--yes` `-y`     |             | `false` | Skip confirmation, sync all cloned |
+| `--refresh` `-r` |             | `false` | Force refresh from GitHub          |
 
 ## Project Structure
 
@@ -136,7 +148,8 @@ src/
 ├── main.rs      # Entry point and event loop
 ├── cli.rs       # CLI argument parsing
 ├── types.rs     # Data structures (Fork, SyncStatus, Mode, etc.)
-├── github.rs    # GitHub API interactions
+├── github.rs    # GitHub API interactions (GraphQL + REST)
+├── cache.rs     # SQLite caching for fork metadata
 ├── sync.rs      # Sync/clone/archive operations (async)
 ├── app.rs       # Application state and logic
 └── ui.rs        # TUI rendering
@@ -163,6 +176,21 @@ cargo clippy
 - **File length limit**: 500 lines max per file (enforced via `scripts/check-file-length.sh`)
 - **Clippy**: All warnings treated as errors
 - **Formatting**: Enforced via `cargo fmt`
+
+### Faster Builds with sccache
+
+For faster incremental builds, install [sccache](https://github.com/mozilla/sccache):
+
+```bash
+cargo install sccache
+
+# Create local cargo config
+mkdir -p .cargo
+echo '[build]
+rustc-wrapper = "sccache"' > .cargo/config.toml
+```
+
+The `.cargo/` directory is gitignored for local configuration.
 
 ## License
 
