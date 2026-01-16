@@ -135,7 +135,8 @@ fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
             | SyncStatus::Fetching
             | SyncStatus::Syncing
             | SyncStatus::Restoring
-            | SyncStatus::Archiving => {
+            | SyncStatus::Archiving
+            | SyncStatus::Deleting => {
                 Cell::from(app.spinner()).style(Style::default().fg(Color::Cyan))
             }
             SyncStatus::Synced => Cell::from("✓").style(Style::default().fg(Color::Green)),
@@ -164,7 +165,8 @@ fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
             | SyncStatus::Fetching
             | SyncStatus::Syncing
             | SyncStatus::Restoring
-            | SyncStatus::Archiving => Style::default().fg(Color::Cyan),
+            | SyncStatus::Archiving
+            | SyncStatus::Deleting => Style::default().fg(Color::Cyan),
             SyncStatus::Pending if app.selected[i] => Style::default().fg(Color::White).bold(),
             SyncStatus::Pending if !fork.is_cloned => Style::default().fg(Color::DarkGray).dim(),
             SyncStatus::Pending => Style::default().fg(Color::Reset),
@@ -317,7 +319,7 @@ fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
             if let Some((msg, _)) = &app.status_message {
                 msg.as_str()
             } else {
-                "j/k: Nav | Space: Select | a: All | Enter: Sync | c: Clone | o: Open | e: Edit | /: Search | d: Stats | R: Refresh | q: Quit"
+                "j/k: Nav | Space: Select | a: All | Enter: Sync | c: Clone | x: Archive | D: Delete | o: Open | /: Search | q: Quit"
             }
         }
         Mode::Search => "Type to filter | Enter: Confirm | Esc: Cancel",
@@ -391,7 +393,25 @@ fn render_modal(f: &mut Frame, app: &App) {
                 format!("Archive {name}? This cannot be undone."),
             )
         }
+        ModalAction::Delete => {
+            let name = app
+                .current_fork()
+                .map(|f| format!("{}/{}", f.owner, f.name))
+                .unwrap_or_default();
+            let cloned = app.current_fork().is_some_and(|f| f.is_cloned);
+            let extra = if cloned {
+                " Local clone will also be removed."
+            } else {
+                ""
+            };
+            (
+                " ⚠ DELETE Fork ",
+                format!("Permanently delete {name}?{extra}"),
+            )
+        }
     };
+
+    let is_destructive = matches!(app.modal_action, ModalAction::Archive | ModalAction::Delete);
 
     let (cancel_style, proceed_style) = if app.modal_button == 0 {
         (
@@ -403,7 +423,7 @@ fn render_modal(f: &mut Frame, app: &App) {
             Style::default().fg(Color::DarkGray),
             Style::default()
                 .fg(Color::Black)
-                .bg(if app.modal_action == ModalAction::Archive {
+                .bg(if is_destructive {
                     Color::Red
                 } else {
                     Color::Green
@@ -443,13 +463,11 @@ fn render_modal(f: &mut Frame, app: &App) {
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(
-                Style::default().fg(if app.modal_action == ModalAction::Archive {
-                    Color::Red
-                } else {
-                    Color::Cyan
-                }),
-            )
+            .border_style(Style::default().fg(if is_destructive {
+                Color::Red
+            } else {
+                Color::Cyan
+            }))
             .title(title),
     );
 

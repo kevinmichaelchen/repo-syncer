@@ -21,7 +21,7 @@ use app::App;
 use cache::SqliteStore;
 use cli::Args;
 use github::fetch_forks_graphql;
-use sync::{archive_fork_async, clone_fork_async, start_syncing};
+use sync::{archive_fork_async, clone_fork_async, delete_fork_async, start_syncing};
 use types::{CacheStatus, Fork, ForkStore, ModalAction, Mode, SyncResult};
 
 fn main() -> Result<()> {
@@ -236,6 +236,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> 
                     app.remove_fork(idx);
                     app.show_message("Fork archived!");
                 }
+                SyncResult::ForkDeleted(idx) => {
+                    app.remove_fork(idx);
+                    app.show_message("Fork deleted!");
+                }
                 SyncResult::ForksRefreshed(new_forks) => {
                     // Update forks list from background refresh
                     let len = new_forks.len();
@@ -361,9 +365,15 @@ fn handle_selecting_mode(
                 }
             }
         }
-        KeyCode::Char('x') | KeyCode::Delete => {
+        KeyCode::Char('x') => {
             if app.current_fork().is_some() {
                 app.modal_action = ModalAction::Archive;
+                app.mode = Mode::ConfirmModal;
+            }
+        }
+        KeyCode::Char('D') => {
+            if app.current_fork().is_some() {
+                app.modal_action = ModalAction::Delete;
                 app.mode = Mode::ConfirmModal;
             }
         }
@@ -454,6 +464,14 @@ fn execute_modal_action(app: &mut App, tx: &mpsc::Sender<SyncResult>) {
                 let fork = app.forks[idx].clone();
                 app.statuses[idx] = types::SyncStatus::Archiving;
                 archive_fork_async(idx, fork, app.dry_run, tx.clone());
+            }
+            app.mode = Mode::Selecting;
+        }
+        ModalAction::Delete => {
+            if let Some(idx) = app.current_fork_index() {
+                let fork = app.forks[idx].clone();
+                app.statuses[idx] = types::SyncStatus::Deleting;
+                delete_fork_async(idx, fork, app.dry_run, tx.clone());
             }
             app.mode = Mode::Selecting;
         }

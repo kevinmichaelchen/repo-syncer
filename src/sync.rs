@@ -26,6 +26,54 @@ pub fn clone_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender<
     });
 }
 
+/// Delete a single fork in the background (removes local clone and deletes from GitHub).
+pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender<SyncResult>) {
+    thread::spawn(move || {
+        let send = |status: SyncStatus| {
+            let _ = tx.send(SyncResult::StatusUpdate(idx, status));
+        };
+
+        send(SyncStatus::Deleting);
+
+        if dry_run {
+            thread::sleep(Duration::from_millis(500));
+            send(SyncStatus::Synced);
+            let _ = tx.send(SyncResult::ForkDeleted(idx));
+            return;
+        }
+
+        // Step 1: Delete local directory if it exists
+        if fork.local_path.exists() {
+            if let Err(e) = std::fs::remove_dir_all(&fork.local_path) {
+                send(SyncStatus::Failed(truncate_error(&format!(
+                    "rm local: {e}"
+                ))));
+                return;
+            }
+        }
+
+        // Step 2: Delete the fork from GitHub
+        let repo = format!("{}/{}", fork.owner, fork.name);
+        let result = Command::new("gh")
+            .args(["repo", "delete", &repo, "--yes"])
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => {
+                send(SyncStatus::Synced);
+                let _ = tx.send(SyncResult::ForkDeleted(idx));
+            }
+            Ok(output) => {
+                let err = String::from_utf8_lossy(&output.stderr);
+                send(SyncStatus::Failed(truncate_error(&err)));
+            }
+            Err(e) => {
+                send(SyncStatus::Failed(truncate_error(&e.to_string())));
+            }
+        }
+    });
+}
+
 /// Archive a single fork in the background (async, non-blocking).
 pub fn archive_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender<SyncResult>) {
     thread::spawn(move || {

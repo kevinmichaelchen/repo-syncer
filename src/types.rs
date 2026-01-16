@@ -61,6 +61,7 @@ pub enum SyncStatus {
     Syncing,
     Restoring,
     Archiving,
+    Deleting,
     Synced,
     Skipped(String),
     Failed(String),
@@ -77,6 +78,7 @@ impl SyncStatus {
             Self::Syncing => "Syncing",
             Self::Restoring => "Restoring",
             Self::Archiving => "Archiving",
+            Self::Deleting => "Deleting",
             Self::Synced => "Synced",
             Self::Skipped(reason) | Self::Failed(reason) => reason,
         }
@@ -98,6 +100,7 @@ pub enum ModalAction {
     Sync,
     Clone,
     Archive,
+    Delete,
 }
 
 #[allow(dead_code)] // Fields reserved for future stats display
@@ -120,6 +123,7 @@ pub enum SyncResult {
     StatusUpdate(usize, SyncStatus),
     ForkCloned(usize),
     ForkArchived(usize),
+    ForkDeleted(usize),
     ForksRefreshed(Vec<Fork>),
     RefreshFailed(String),
 }
