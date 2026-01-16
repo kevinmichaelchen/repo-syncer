@@ -33,7 +33,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(forks: Vec<Fork>, dry_run: bool, tool_home: PathBuf, cache_status: CacheStatus) -> Self {
+    pub fn new(
+        forks: Vec<Fork>,
+        dry_run: bool,
+        tool_home: PathBuf,
+        cache_status: CacheStatus,
+    ) -> Self {
         let len = forks.len();
         let mut state = TableState::default();
         if !forks.is_empty() {

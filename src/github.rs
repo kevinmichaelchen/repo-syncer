@@ -83,6 +83,7 @@ struct GraphQLLanguage {
 // REST API TYPES (legacy fallback)
 // ============================================================
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct GhFork {
@@ -95,11 +96,13 @@ struct GhFork {
     primary_language: Option<GhLanguage>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 struct GhOwner {
     login: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct GhParent {
@@ -107,17 +110,20 @@ struct GhParent {
     owner: GhOwner,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 struct GhBranchRef {
     name: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 struct GhLanguage {
     name: String,
 }
 
 /// Fetch all forks from GitHub for the authenticated user.
+#[allow(dead_code)]
 pub fn fetch_forks(tool_home: &Path) -> Result<Vec<Fork>> {
     let output = Command::new("gh")
         .args([
@@ -242,8 +248,8 @@ pub fn fetch_forks_graphql(tool_home: &Path) -> Result<Vec<Fork>> {
             );
         }
 
-        let response: GraphQLResponse = serde_json::from_slice(&output.stdout)
-            .context("Failed to parse GraphQL response")?;
+        let response: GraphQLResponse =
+            serde_json::from_slice(&output.stdout).context("Failed to parse GraphQL response")?;
 
         if let Some(errors) = response.errors {
             let messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
@@ -303,6 +309,7 @@ pub fn fetch_forks_graphql(tool_home: &Path) -> Result<Vec<Fork>> {
 }
 
 /// Fetch forks, trying GraphQL first with REST fallback.
+#[allow(dead_code)]
 pub fn fetch_forks_with_fallback(tool_home: &Path) -> Result<Vec<Fork>> {
     match fetch_forks_graphql(tool_home) {
         Ok(forks) => Ok(forks),

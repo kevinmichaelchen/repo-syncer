@@ -82,11 +82,11 @@ impl SqliteStore {
 
     /// Get a metadata value.
     fn get_metadata(&self, key: &str) -> Result<Option<String>> {
-        let result = self
-            .conn
-            .query_row("SELECT value FROM metadata WHERE key = ?1", params![key], |row| {
-                row.get(0)
-            });
+        let result = self.conn.query_row(
+            "SELECT value FROM metadata WHERE key = ?1",
+            params![key],
+            |row| row.get(0),
+        );
 
         match result {
             Ok(value) => Ok(Some(value)),

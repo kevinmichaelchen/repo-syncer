@@ -205,7 +205,11 @@ fn render_details_pane(f: &mut Frame, app: &App, area: Rect) {
             .collect::<String>();
 
         let language = fork.primary_language.as_deref().unwrap_or("Unknown");
-        let clone_status = if fork.is_cloned { "Cloned" } else { "Not cloned" };
+        let clone_status = if fork.is_cloned {
+            "Cloned"
+        } else {
+            "Not cloned"
+        };
 
         vec![
             Line::from(vec![
@@ -224,9 +228,10 @@ fn render_details_pane(f: &mut Frame, app: &App, area: Rect) {
                 ),
             ]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("Description: ", Style::default().fg(Color::DarkGray)),
-            ]),
+            Line::from(vec![Span::styled(
+                "Description: ",
+                Style::default().fg(Color::DarkGray),
+            )]),
             Line::from(Span::styled(description, Style::default().fg(Color::White))),
             Line::from(""),
             Line::from(vec![
@@ -348,7 +353,10 @@ fn render_modal(f: &mut Frame, app: &App) {
                 .current_fork()
                 .map(|f| format!("{}/{}", f.owner, f.name))
                 .unwrap_or_default();
-            (" ⚠ Archive Fork ", format!("Archive {name}? This cannot be undone."))
+            (
+                " ⚠ Archive Fork ",
+                format!("Archive {name}? This cannot be undone."),
+            )
         }
     };
 
@@ -379,7 +387,9 @@ fn render_modal(f: &mut Frame, app: &App) {
 
     let text = vec![
         Line::from(""),
-        Line::from(message).style(Style::default().bold()).centered(),
+        Line::from(message)
+            .style(Style::default().bold())
+            .centered(),
         Line::from(""),
         Line::from(if app.dry_run {
             "(Dry run - no changes will be made)"
@@ -399,11 +409,13 @@ fn render_modal(f: &mut Frame, app: &App) {
     let modal = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(if app.modal_action == ModalAction::Archive {
-                Color::Red
-            } else {
-                Color::Cyan
-            }))
+            .border_style(
+                Style::default().fg(if app.modal_action == ModalAction::Archive {
+                    Color::Red
+                } else {
+                    Color::Cyan
+                }),
+            )
             .title(title),
     );
 
