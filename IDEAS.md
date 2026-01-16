@@ -109,3 +109,29 @@ Support a config file (`~/.config/repo-syncer/config.toml`) for:
 - Excluded repos (never show certain forks)
 - Custom keybindings
 - Theme/color preferences
+
+## UI/UX Enhancements
+
+Visual polish and advanced TUI features:
+
+### Implemented
+
+- ✅ Rounded borders throughout
+- ✅ Better highlight symbol (▶ arrow)
+- ✅ Status column shows "Not cloned" instead of suffix
+- ✅ Dim uncloned repos, bold selected items
+
+### Future Ideas
+
+- **Progress gauge** - Show overall sync progress during bulk operations with a
+  `Gauge` widget
+- **Sparklines** - Mini inline charts showing sync history or activity over time
+- **Color-coded languages** - Assign colors to languages in stats (Rust=orange,
+  Go=cyan, Python=blue, etc.)
+- **RGB theme system** - Cohesive color palette using true RGB colors instead of
+  basic 16
+- **Animated transitions** - Smooth status changes with color fades
+- **Split org/repo columns** - Separate columns for organization and repository
+  name for better visual scanning
+- **Scrollbar** - Visual scrollbar for long fork lists
+- **Unicode art** - ASCII art logo or decorative elements in title bar
