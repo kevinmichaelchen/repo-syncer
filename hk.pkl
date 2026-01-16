@@ -6,6 +6,14 @@ local linters = new Mapping<String, Step> {
     ["cargo-clippy"] = Builtins.cargo_clippy
 }
 
+local checks = new Mapping<String, Step> {
+    ["cargo-fmt"] = Builtins.cargo_fmt
+    ["cargo-clippy"] = Builtins.cargo_clippy
+    ["file-length"] = new Step {
+        run = "./scripts/check-file-length.sh"
+    }
+}
+
 hooks {
     ["pre-commit"] {
         fix = true
@@ -22,6 +30,6 @@ hooks {
         steps = linters
     }
     ["check"] {
-        steps = linters
+        steps = checks
     }
 }
