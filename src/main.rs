@@ -113,7 +113,7 @@ fn get_tool_home(args_tool_home: Option<std::path::PathBuf>) -> Result<std::path
         return Ok(path);
     }
     let home = env::var("HOME").context("HOME environment variable not set")?;
-    Ok(std::path::PathBuf::from(home).join("dev"))
+    Ok(std::path::PathBuf::from(home).join("dev/github.com"))
 }
 
 /// Load forks with cache support.
