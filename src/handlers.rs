@@ -153,27 +153,41 @@ pub fn handle_search_mode(app: &mut App, key: KeyCode) {
 
 pub fn handle_error_popup(app: &mut App, key: KeyCode) {
     match key {
-        KeyCode::Esc | KeyCode::Char('q') => {
+        KeyCode::Esc | KeyCode::Char('q' | 'n') => {
             app.dismiss_error_popup();
         }
-        KeyCode::Enter => {
-            // If there's an action, run it
-            if let Some(details) = &app.error_details {
-                if let Some(action) = &details.action {
-                    let command = action.command.clone();
-                    app.dismiss_error_popup();
-                    // Run the command in a separate thread
-                    std::thread::spawn(move || {
-                        let _ = std::process::Command::new("sh")
-                            .arg("-c")
-                            .arg(&command)
-                            .status();
-                    });
-                    app.show_message("Running fix command...");
+        KeyCode::Left | KeyCode::Char('h') => {
+            app.modal_button = 0; // Action button
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            app.modal_button = 1; // Dismiss button
+        }
+        KeyCode::Tab => {
+            app.modal_button = 1 - app.modal_button;
+        }
+        KeyCode::Enter | KeyCode::Char('y') => {
+            // Execute based on selected button
+            if app.modal_button == 0 {
+                // Run the action if available
+                if let Some(details) = &app.error_details {
+                    if let Some(action) = &details.action {
+                        let command = action.command.clone();
+                        app.dismiss_error_popup();
+                        std::thread::spawn(move || {
+                            let _ = std::process::Command::new("sh")
+                                .arg("-c")
+                                .arg(&command)
+                                .status();
+                        });
+                        app.show_message("Running fix command...");
+                    } else {
+                        app.dismiss_error_popup();
+                    }
                 } else {
                     app.dismiss_error_popup();
                 }
             } else {
+                // Dismiss
                 app.dismiss_error_popup();
             }
         }

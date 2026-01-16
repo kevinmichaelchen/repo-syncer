@@ -319,6 +319,7 @@ impl App {
     pub fn show_error_popup(&mut self, details: ErrorDetails) {
         self.previous_mode = Some(self.mode.clone());
         self.error_details = Some(details);
+        self.modal_button = 0; // Select action button by default
         self.mode = Mode::ErrorPopup;
     }
 

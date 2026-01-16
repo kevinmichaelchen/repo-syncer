@@ -68,7 +68,8 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
 
                 // Check if this is a scope error - provide actionable fix
                 if err.contains("delete_repo") && err.contains("scope") {
-                    send(SyncStatus::Failed("Missing scope".to_string()));
+                    // Reset to Pending so user can try again after adding scope
+                    send(SyncStatus::Pending);
                     let _ = tx.send(SyncResult::ActionableError(ErrorDetails {
                         title: "Missing GitHub Scope".to_string(),
                         message: format!(

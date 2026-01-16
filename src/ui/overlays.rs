@@ -290,6 +290,19 @@ pub fn render_error_popup(f: &mut Frame, app: &App) {
     ];
 
     if let Some(action) = &details.action {
+        // Determine button styles based on selection
+        let (action_style, dismiss_style) = if app.modal_button == 0 {
+            (
+                Style::default().fg(Color::Black).bg(Color::Green).bold(),
+                Style::default().fg(Color::DarkGray),
+            )
+        } else {
+            (
+                Style::default().fg(Color::DarkGray),
+                Style::default().fg(Color::Black).bg(Color::White).bold(),
+            )
+        };
+
         text.push(Line::from(""));
         text.push(
             Line::from(Span::styled(
@@ -301,18 +314,15 @@ pub fn render_error_popup(f: &mut Frame, app: &App) {
         text.push(Line::from(""));
         text.push(
             Line::from(vec![
-                Span::styled(
-                    format!(" [ {} ] ", action.label),
-                    Style::default().fg(Color::Black).bg(Color::Green).bold(),
-                ),
+                Span::styled(format!(" [ {} ] ", action.label), action_style),
                 Span::raw("     "),
-                Span::styled(" [ Dismiss ] ", Style::default().fg(Color::DarkGray)),
+                Span::styled(" [ Dismiss ] ", dismiss_style),
             ])
             .centered(),
         );
         text.push(Line::from(""));
         text.push(
-            Line::from("Enter: Run action | Esc: Dismiss")
+            Line::from("h/l: Switch | Enter: Select | Esc: Dismiss")
                 .style(Style::default().fg(Color::DarkGray))
                 .centered(),
         );
