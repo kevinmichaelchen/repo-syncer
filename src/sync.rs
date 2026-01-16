@@ -5,6 +5,34 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+/// Get how many commits a fork is behind its upstream.
+/// Returns None if the check fails or can't be determined.
+fn get_commits_behind(fork: &Fork) -> Option<u32> {
+    let result = Command::new("gh")
+        .args([
+            "api",
+            &format!(
+                "repos/{}/{}/compare/{}...{}:{}",
+                fork.owner,
+                fork.name,
+                fork.default_branch,
+                fork.parent_owner,
+                fork.default_branch
+            ),
+            "--jq",
+            ".behind_by",
+        ])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            let s = String::from_utf8_lossy(&output.stdout);
+            s.trim().parse().ok()
+        }
+        _ => None,
+    }
+}
+
 /// Start syncing selected forks in a background thread.
 pub fn start_syncing(
     forks_to_sync: Vec<(usize, Fork)>,
@@ -37,7 +65,7 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
 
         if dry_run {
             thread::sleep(Duration::from_millis(500));
-            send(SyncStatus::Synced);
+            send(SyncStatus::Synced(None));
             let _ = tx.send(SyncResult::ForkDeleted(idx));
             return;
         }
@@ -60,7 +88,7 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
 
         match result {
             Ok(output) if output.status.success() => {
-                send(SyncStatus::Synced);
+                send(SyncStatus::Synced(None));
                 let _ = tx.send(SyncResult::ForkDeleted(idx));
             }
             Ok(output) => {
@@ -104,7 +132,7 @@ pub fn archive_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sende
 
         if dry_run {
             thread::sleep(Duration::from_millis(500));
-            send(SyncStatus::Synced);
+            send(SyncStatus::Synced(None));
             let _ = tx.send(SyncResult::ForkArchived(idx));
             return;
         }
@@ -116,7 +144,7 @@ pub fn archive_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sende
 
         match result {
             Ok(output) if output.status.success() => {
-                send(SyncStatus::Synced);
+                send(SyncStatus::Synced(None));
                 let _ = tx.send(SyncResult::ForkArchived(idx));
             }
             Ok(output) => {
@@ -140,7 +168,7 @@ pub fn clone_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Send
 
     if dry_run {
         thread::sleep(Duration::from_millis(500));
-        send(SyncStatus::Synced);
+        send(SyncStatus::Synced(None));
         let _ = tx.send(SyncResult::ForkCloned(idx));
         return;
     }
@@ -164,7 +192,7 @@ pub fn clone_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Send
 
     match clone_result {
         Ok(output) if output.status.success() => {
-            send(SyncStatus::Synced);
+            send(SyncStatus::Synced(None));
             let _ = tx.send(SyncResult::ForkCloned(idx));
         }
         Ok(output) => {
@@ -183,6 +211,9 @@ fn sync_fork_remote(idx: usize, fork: &Fork, tx: &mpsc::Sender<SyncResult>) {
     let send = |status: SyncStatus| {
         let _ = tx.send(SyncResult::StatusUpdate(idx, status));
     };
+
+    // Check how many commits behind before syncing
+    let commits_behind = get_commits_behind(fork);
 
     send(SyncStatus::Syncing);
 
@@ -203,13 +234,13 @@ fn sync_fork_remote(idx: usize, fork: &Fork, tx: &mpsc::Sender<SyncResult>) {
 
     match result {
         Ok(output) if output.status.success() => {
-            send(SyncStatus::Synced);
+            send(SyncStatus::Synced(commits_behind));
         }
         Ok(output) => {
             let err = String::from_utf8_lossy(&output.stderr);
             // Check if already up-to-date (not an error)
             if err.contains("already up-to-date") || !output.stdout.is_empty() {
-                send(SyncStatus::Synced);
+                send(SyncStatus::Synced(Some(0)));
             } else {
                 send(SyncStatus::Failed(truncate_error(&err)));
             }
@@ -233,7 +264,7 @@ pub fn sync_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Sende
 
     if dry_run {
         thread::sleep(Duration::from_millis(500));
-        send(SyncStatus::Synced);
+        send(SyncStatus::Synced(None));
         return;
     }
 
@@ -243,6 +274,9 @@ pub fn sync_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Sende
         sync_fork_remote(idx, fork, tx);
         return;
     }
+
+    // Check how many commits behind before syncing
+    let commits_behind = get_commits_behind(fork);
 
     // Repo exists locally - sync it
     let path_str = fork.local_path.to_string_lossy();
@@ -411,5 +445,5 @@ pub fn sync_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Sende
             .output();
     }
 
-    send(SyncStatus::Synced);
+    send(SyncStatus::Synced(commits_behind));
 }

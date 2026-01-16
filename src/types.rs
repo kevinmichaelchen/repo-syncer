@@ -62,25 +62,28 @@ pub enum SyncStatus {
     Restoring,
     Archiving,
     Deleting,
-    Synced,
+    /// Sync completed. Option<u32> is the number of commits fast-forwarded.
+    Synced(Option<u32>),
     Skipped(String),
     Failed(String),
 }
 
 impl SyncStatus {
-    pub fn display(&self) -> &str {
+    pub fn display(&self) -> String {
         match self {
-            Self::Pending => "Pending",
-            Self::Checking => "Checking",
-            Self::Cloning => "Cloning",
-            Self::Stashing => "Stashing",
-            Self::Fetching => "Fetching",
-            Self::Syncing => "Syncing",
-            Self::Restoring => "Restoring",
-            Self::Archiving => "Archiving",
-            Self::Deleting => "Deleting",
-            Self::Synced => "Synced",
-            Self::Skipped(reason) | Self::Failed(reason) => reason,
+            Self::Pending => "Pending".to_string(),
+            Self::Checking => "Checking".to_string(),
+            Self::Cloning => "Cloning".to_string(),
+            Self::Stashing => "Stashing".to_string(),
+            Self::Fetching => "Fetching".to_string(),
+            Self::Syncing => "Syncing".to_string(),
+            Self::Restoring => "Restoring".to_string(),
+            Self::Archiving => "Archiving".to_string(),
+            Self::Deleting => "Deleting".to_string(),
+            Self::Synced(None) => "Synced".to_string(),
+            Self::Synced(Some(0)) => "Up-to-date".to_string(),
+            Self::Synced(Some(n)) => format!("+{n} commits"),
+            Self::Skipped(reason) | Self::Failed(reason) => reason.clone(),
         }
     }
 }

@@ -34,7 +34,7 @@ pub fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
             | SyncStatus::Deleting => {
                 Cell::from(app.spinner()).style(Style::default().fg(Color::Cyan))
             }
-            SyncStatus::Synced => Cell::from("✓").style(Style::default().fg(Color::Green)),
+            SyncStatus::Synced(_) => Cell::from("✓").style(Style::default().fg(Color::Green)),
             SyncStatus::Skipped(_) => Cell::from("-").style(Style::default().fg(Color::Yellow)),
             SyncStatus::Failed(_) => Cell::from("✗").style(Style::default().fg(Color::Red)),
         };
@@ -47,11 +47,11 @@ pub fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
         {
             "Not cloned".to_string()
         } else {
-            app.statuses[i].display().to_string()
+            app.statuses[i].display()
         };
 
         let style = match &app.statuses[i] {
-            SyncStatus::Synced => Style::default().fg(Color::Green),
+            SyncStatus::Synced(_) => Style::default().fg(Color::Green),
             SyncStatus::Skipped(_) => Style::default().fg(Color::Yellow),
             SyncStatus::Failed(_) => Style::default().fg(Color::Red),
             SyncStatus::Checking

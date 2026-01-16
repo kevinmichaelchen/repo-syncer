@@ -173,14 +173,14 @@ impl App {
             !self.selected[i]
                 || matches!(
                     status,
-                    SyncStatus::Synced | SyncStatus::Skipped(_) | SyncStatus::Failed(_)
+                    SyncStatus::Synced(_) | SyncStatus::Skipped(_) | SyncStatus::Failed(_)
                 )
         })
     }
 
     pub fn reset_for_next_round(&mut self) {
         for i in 0..self.forks.len() {
-            if matches!(self.statuses[i], SyncStatus::Synced) {
+            if matches!(self.statuses[i], SyncStatus::Synced(_)) {
                 self.selected[i] = false;
             }
             self.statuses[i] = SyncStatus::Pending;
@@ -197,7 +197,7 @@ impl App {
                 continue;
             }
             match status {
-                SyncStatus::Synced => synced += 1,
+                SyncStatus::Synced(_) => synced += 1,
                 SyncStatus::Skipped(_) => skipped += 1,
                 SyncStatus::Failed(_) => failed += 1,
                 _ => {}
@@ -254,7 +254,7 @@ impl App {
             *lang_counts.entry(lang).or_insert(0) += 1;
 
             match &self.statuses[i] {
-                SyncStatus::Synced => synced += 1,
+                SyncStatus::Synced(_) => synced += 1,
                 SyncStatus::Failed(_) | SyncStatus::Skipped(_) => failed += 1,
                 _ => pending += 1,
             }
