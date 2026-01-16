@@ -1,12 +1,17 @@
-use crate::types::{CacheStatus, Fork, ForkStats, ModalAction, Mode, SyncStatus};
+use crate::types::{
+    CacheStatus, ErrorDetails, Fork, ForkStats, ModalAction, Mode, SyncStatus, Toast,
+};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use ratatui::widgets::TableState;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 pub const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+pub const TOAST_DURATION: Duration = Duration::from_secs(4);
+#[allow(dead_code)] // Reserved for future toast queue limit
+pub const MAX_TOASTS: usize = 3;
 
 pub struct App {
     pub forks: Vec<Fork>,
@@ -26,10 +31,16 @@ pub struct App {
     pub fuzzy_matcher: SkimMatcherV2,
     // Stats cache
     pub stats_cache: Option<ForkStats>,
-    // Status message
+    // Status message (legacy, keeping for compatibility)
     pub status_message: Option<(String, Instant)>,
     // Cache status
     pub cache_status: CacheStatus,
+    // Toast notifications
+    pub toasts: VecDeque<Toast>,
+    // Error popup details
+    pub error_details: Option<ErrorDetails>,
+    // Previous mode (to return to after error popup)
+    pub previous_mode: Option<Mode>,
 }
 
 impl App {
@@ -63,6 +74,9 @@ impl App {
             stats_cache: None,
             status_message: None,
             cache_status,
+            toasts: VecDeque::new(),
+            error_details: None,
+            previous_mode: None,
         }
     }
 
@@ -138,6 +152,8 @@ impl App {
                 self.status_message = None;
             }
         }
+        // Clear expired toasts
+        self.clear_expired_toasts();
     }
 
     pub fn spinner(&self) -> &'static str {
@@ -280,6 +296,39 @@ impl App {
             self.statuses.remove(idx);
             self.selected.remove(idx);
             self.update_search();
+        }
+    }
+
+    /// Add a toast notification.
+    #[allow(dead_code)] // Reserved for future toast notifications
+    pub fn add_toast(&mut self, toast: Toast) {
+        self.toasts.push_back(toast);
+        // Keep only the most recent toasts
+        while self.toasts.len() > MAX_TOASTS {
+            self.toasts.pop_front();
+        }
+    }
+
+    /// Clear expired toasts.
+    pub fn clear_expired_toasts(&mut self) {
+        self.toasts
+            .retain(|toast| toast.created_at.elapsed() < TOAST_DURATION);
+    }
+
+    /// Show an error popup with optional action.
+    pub fn show_error_popup(&mut self, details: ErrorDetails) {
+        self.previous_mode = Some(self.mode.clone());
+        self.error_details = Some(details);
+        self.mode = Mode::ErrorPopup;
+    }
+
+    /// Dismiss the error popup and return to previous mode.
+    pub fn dismiss_error_popup(&mut self) {
+        self.error_details = None;
+        if let Some(mode) = self.previous_mode.take() {
+            self.mode = mode;
+        } else {
+            self.mode = Mode::Selecting;
         }
     }
 }

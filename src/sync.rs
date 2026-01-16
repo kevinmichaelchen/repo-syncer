@@ -1,5 +1,5 @@
 use crate::github::truncate_error;
-use crate::types::{Fork, SyncResult, SyncStatus};
+use crate::types::{ErrorAction, ErrorDetails, Fork, SyncResult, SyncStatus};
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
@@ -64,8 +64,26 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
                 let _ = tx.send(SyncResult::ForkDeleted(idx));
             }
             Ok(output) => {
-                let err = String::from_utf8_lossy(&output.stderr);
-                send(SyncStatus::Failed(truncate_error(&err)));
+                let err = String::from_utf8_lossy(&output.stderr).to_string();
+
+                // Check if this is a scope error - provide actionable fix
+                if err.contains("delete_repo") && err.contains("scope") {
+                    send(SyncStatus::Failed("Missing scope".to_string()));
+                    let _ = tx.send(SyncResult::ActionableError(ErrorDetails {
+                        title: "Missing GitHub Scope".to_string(),
+                        message: format!(
+                            "Cannot delete {repo}.\n\n\
+                            The 'delete_repo' scope is required to delete repositories.\n\
+                            Your current GitHub CLI token doesn't have this permission."
+                        ),
+                        action: Some(ErrorAction {
+                            label: "Add delete_repo scope".to_string(),
+                            command: "gh auth refresh -h github.com -s delete_repo".to_string(),
+                        }),
+                    }));
+                } else {
+                    send(SyncStatus::Failed(truncate_error(&err)));
+                }
             }
             Err(e) => {
                 send(SyncStatus::Failed(truncate_error(&e.to_string())));
