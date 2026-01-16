@@ -1,5 +1,5 @@
 use crate::github::truncate_error;
-use crate::types::{Fork, SyncResult, SyncStatus};
+use crate::types::{ErrorAction, ErrorDetails, Fork, SyncResult, SyncStatus};
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
@@ -23,6 +23,73 @@ pub fn start_syncing(
 pub fn clone_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender<SyncResult>) {
     thread::spawn(move || {
         clone_single_fork(idx, &fork, dry_run, &tx);
+    });
+}
+
+/// Delete a single fork in the background (removes local clone and deletes from GitHub).
+pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender<SyncResult>) {
+    thread::spawn(move || {
+        let send = |status: SyncStatus| {
+            let _ = tx.send(SyncResult::StatusUpdate(idx, status));
+        };
+
+        send(SyncStatus::Deleting);
+
+        if dry_run {
+            thread::sleep(Duration::from_millis(500));
+            send(SyncStatus::Synced);
+            let _ = tx.send(SyncResult::ForkDeleted(idx));
+            return;
+        }
+
+        // Step 1: Delete local directory if it exists
+        if fork.local_path.exists() {
+            if let Err(e) = std::fs::remove_dir_all(&fork.local_path) {
+                send(SyncStatus::Failed(truncate_error(&format!(
+                    "rm local: {e}"
+                ))));
+                return;
+            }
+        }
+
+        // Step 2: Delete the fork from GitHub
+        let repo = format!("{}/{}", fork.owner, fork.name);
+        let result = Command::new("gh")
+            .args(["repo", "delete", &repo, "--yes"])
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => {
+                send(SyncStatus::Synced);
+                let _ = tx.send(SyncResult::ForkDeleted(idx));
+            }
+            Ok(output) => {
+                let err = String::from_utf8_lossy(&output.stderr).to_string();
+
+                // Check if this is a scope error - provide actionable fix
+                if err.contains("delete_repo") && err.contains("scope") {
+                    // Reset to Pending so user can try again after adding scope
+                    send(SyncStatus::Pending);
+                    let _ = tx.send(SyncResult::ActionableError(ErrorDetails {
+                        title: "Missing GitHub Scope".to_string(),
+                        message: format!(
+                            "Cannot delete {repo}.\n\n\
+                            The 'delete_repo' scope is required to delete repositories.\n\
+                            Your current GitHub CLI token doesn't have this permission."
+                        ),
+                        action: Some(ErrorAction {
+                            label: "Add delete_repo scope".to_string(),
+                            command: "gh auth refresh -h github.com -s delete_repo".to_string(),
+                        }),
+                    }));
+                } else {
+                    send(SyncStatus::Failed(truncate_error(&err)));
+                }
+            }
+            Err(e) => {
+                send(SyncStatus::Failed(truncate_error(&e.to_string())));
+            }
+        }
     });
 }
 

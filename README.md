@@ -67,15 +67,16 @@ repo-syncer --tool-home ~/projects
 
 ### Actions
 
-| Key     | Action                           |
-| ------- | -------------------------------- |
-| `Enter` | Sync selected forks              |
-| `c`     | Clone current fork (if uncloned) |
-| `o`     | Open in browser                  |
-| `e`     | Open in editor ($EDITOR)         |
-| `x`     | Archive fork (with confirmation) |
-| `d`     | Toggle stats dashboard           |
-| `R`     | Refresh from GitHub              |
+| Key     | Action                                   |
+| ------- | ---------------------------------------- |
+| `Enter` | Sync selected forks                      |
+| `c`     | Clone current fork (if uncloned)         |
+| `o`     | Open in browser                          |
+| `e`     | Open in editor ($EDITOR)                 |
+| `x`     | Archive fork (with confirmation)         |
+| `D`     | Delete fork permanently (local + GitHub) |
+| `d`     | Toggle stats dashboard                   |
+| `R`     | Refresh from GitHub                      |
 
 ### General
 

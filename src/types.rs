@@ -61,6 +61,7 @@ pub enum SyncStatus {
     Syncing,
     Restoring,
     Archiving,
+    Deleting,
     Synced,
     Skipped(String),
     Failed(String),
@@ -77,6 +78,7 @@ impl SyncStatus {
             Self::Syncing => "Syncing",
             Self::Restoring => "Restoring",
             Self::Archiving => "Archiving",
+            Self::Deleting => "Deleting",
             Self::Synced => "Synced",
             Self::Skipped(reason) | Self::Failed(reason) => reason,
         }
@@ -89,8 +91,69 @@ pub enum Mode {
     Search,
     StatsOverlay,
     ConfirmModal,
+    ErrorPopup,
     Syncing,
     Done,
+}
+
+// ============================================================
+// TOAST & ERROR HANDLING
+// ============================================================
+
+#[derive(Clone, Debug)]
+pub struct Toast {
+    pub message: String,
+    pub level: ToastLevel,
+    pub created_at: std::time::Instant,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[allow(dead_code)] // Reserved for future toast notifications
+pub enum ToastLevel {
+    Info,
+    Success,
+    Warning,
+    Error,
+}
+
+#[allow(dead_code)] // Reserved for future toast notifications
+impl Toast {
+    pub fn info(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            level: ToastLevel::Info,
+            created_at: std::time::Instant::now(),
+        }
+    }
+
+    pub fn success(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            level: ToastLevel::Success,
+            created_at: std::time::Instant::now(),
+        }
+    }
+
+    pub fn error(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            level: ToastLevel::Error,
+            created_at: std::time::Instant::now(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ErrorDetails {
+    pub title: String,
+    pub message: String,
+    pub action: Option<ErrorAction>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ErrorAction {
+    pub label: String,
+    pub command: String,
 }
 
 #[derive(PartialEq, Clone)]
@@ -98,6 +161,7 @@ pub enum ModalAction {
     Sync,
     Clone,
     Archive,
+    Delete,
 }
 
 #[allow(dead_code)] // Fields reserved for future stats display
@@ -120,6 +184,9 @@ pub enum SyncResult {
     StatusUpdate(usize, SyncStatus),
     ForkCloned(usize),
     ForkArchived(usize),
+    ForkDeleted(usize),
     ForksRefreshed(Vec<Fork>),
     RefreshFailed(String),
+    /// An error occurred that may have an actionable fix
+    ActionableError(ErrorDetails),
 }
