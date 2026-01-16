@@ -55,6 +55,15 @@ pub fn handle_selecting_mode(
             if app.selected_count() > 0 {
                 app.modal_action = ModalAction::Sync;
                 app.mode = Mode::ConfirmModal;
+            } else if let Some(idx) = app.current_fork_index() {
+                // Nothing selected - sync current fork if cloned
+                if app.forks[idx].is_cloned {
+                    app.selected[idx] = true;
+                    app.modal_action = ModalAction::Sync;
+                    app.mode = Mode::ConfirmModal;
+                } else {
+                    app.show_message("Not cloned - press 'c' to clone first");
+                }
             }
         }
         KeyCode::Char('/') => {
