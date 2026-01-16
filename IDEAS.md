@@ -6,11 +6,14 @@ Brainstorming for future versions of repo-syncer.
 
 These ideas have been implemented:
 
-- ✅ **Language & Stats Dashboard** - Bar chart of forks by language, total/cloned/uncloned counts
+- ✅ **Language & Stats Dashboard** - Bar chart of forks by language,
+  total/cloned/uncloned counts
 - ✅ **Interactive Filtering** - `/` to fuzzy search by name
 - ✅ **Batch Operations** - Archive, clone, open in browser/editor
-- ✅ **Modular Architecture** - Split into focused modules (cli, types, github, sync, app, ui)
-- ✅ **SQLite Caching** - Cache fork metadata locally for instant startup and offline mode
+- ✅ **Modular Architecture** - Split into focused modules (cli, types, github,
+  sync, app, ui)
+- ✅ **SQLite Caching** - Cache fork metadata locally for instant startup and
+  offline mode
 
 ---
 
@@ -24,7 +27,8 @@ Use an LLM to automatically classify forks into categories:
 - **Configs** - dotfiles, templates, boilerplates
 - **Contributions** - forks where you've submitted PRs
 
-Could analyze repo name, description, README, and file structure to infer category.
+Could analyze repo name, description, README, and file structure to infer
+category.
 
 ## Enhanced Stats Dashboard
 
@@ -40,18 +44,21 @@ Expand the statistics view with:
 Extend beyond forks to manage GitHub stars:
 
 - **Browse starred repos** - Same TUI experience for stars
-- **Semantic search with HELIX-DB** - Vector embeddings for finding repos by concept, not just name
+- **Semantic search with HELIX-DB** - Vector embeddings for finding repos by
+  concept, not just name
 - **Categories from embeddings** - Automatically cluster similar repos
 - **Star/unstar from TUI** - Manage stars without leaving the terminal
 - **Cross-reference** - Find stars related to your forks
 
-[HELIX-DB](https://github.com/helixdb/helix-db) would enable semantic queries like:
+[HELIX-DB](https://github.com/helixdb/helix-db) would enable semantic queries
+like:
 
 - "Show me repos about state machines"
 - "Find testing utilities for TypeScript"
 - "Repos similar to X"
 
-Index repo name, description, README, and topics into embeddings for powerful discovery.
+Index repo name, description, README, and topics into embeddings for powerful
+discovery.
 
 ## Advanced Filtering
 
@@ -64,7 +71,8 @@ Expand filtering beyond name search:
 
 ## Onefetch Integration
 
-Leverage [onefetch](https://github.com/o2sh/onefetch) as a library to show rich repository info:
+Leverage [onefetch](https://github.com/o2sh/onefetch) as a library to show rich
+repository info:
 
 - Git history statistics
 - Contributors
