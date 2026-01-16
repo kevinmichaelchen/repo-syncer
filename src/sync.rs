@@ -177,7 +177,53 @@ pub fn clone_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Send
     }
 }
 
+/// Sync a fork remotely without any local clone operations.
+/// Uses `gh repo sync` to update the GitHub fork from its upstream.
+fn sync_fork_remote(idx: usize, fork: &Fork, tx: &mpsc::Sender<SyncResult>) {
+    let send = |status: SyncStatus| {
+        let _ = tx.send(SyncResult::StatusUpdate(idx, status));
+    };
+
+    send(SyncStatus::Syncing);
+
+    let repo = format!("{}/{}", fork.owner, fork.name);
+    let source = format!("{}/{}", fork.parent_owner, fork.parent_name);
+
+    let result = Command::new("gh")
+        .args([
+            "repo",
+            "sync",
+            &repo,
+            "--source",
+            &source,
+            "--branch",
+            &fork.default_branch,
+        ])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => {
+            send(SyncStatus::Synced);
+        }
+        Ok(output) => {
+            let err = String::from_utf8_lossy(&output.stderr);
+            // Check if already up-to-date (not an error)
+            if err.contains("already up-to-date") || !output.stdout.is_empty() {
+                send(SyncStatus::Synced);
+            } else {
+                send(SyncStatus::Failed(truncate_error(&err)));
+            }
+        }
+        Err(e) => {
+            send(SyncStatus::Failed(truncate_error(&e.to_string())));
+        }
+    }
+}
+
 /// Sync a single fork with its upstream (runs in caller's thread context).
+/// Works for both cloned and uncloned forks:
+/// - Uncloned: syncs the GitHub fork remotely via `gh repo sync`
+/// - Cloned: syncs GitHub fork AND updates local clone
 pub fn sync_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Sender<SyncResult>) {
     let send = |status: SyncStatus| {
         let _ = tx.send(SyncResult::StatusUpdate(idx, status));
@@ -193,7 +239,8 @@ pub fn sync_single_fork(idx: usize, fork: &Fork, dry_run: bool, tx: &mpsc::Sende
 
     // Check if repo exists locally
     if !fork.local_path.exists() {
-        clone_single_fork(idx, fork, dry_run, tx);
+        // Not cloned - just sync the GitHub fork remotely
+        sync_fork_remote(idx, fork, tx);
         return;
     }
 
