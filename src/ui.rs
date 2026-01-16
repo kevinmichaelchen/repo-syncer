@@ -2,7 +2,9 @@ use crate::app::App;
 use crate::types::{CacheStatus, ModalAction, Mode, SyncStatus};
 use ratatui::{
     prelude::*,
-    widgets::{Bar, BarChart, BarGroup, Block, Borders, Cell, Clear, Paragraph, Row, Table},
+    widgets::{
+        Bar, BarChart, BarGroup, Block, BorderType, Borders, Cell, Clear, Paragraph, Row, Table,
+    },
 };
 
 pub fn render(f: &mut Frame, app: &mut App) {
@@ -100,7 +102,11 @@ fn render_title(f: &mut Frame, app: &App, area: Rect) {
 
     let title_block = Paragraph::new(title)
         .style(Style::default().fg(Color::Cyan).bold())
-        .block(Block::default().borders(Borders::ALL));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
     f.render_widget(title_block, area);
 }
 
@@ -138,7 +144,15 @@ fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
         };
 
         let repo_name = format!("{}/{}", fork.parent_owner, fork.name);
-        let cloned_indicator = if fork.is_cloned { "" } else { " (uncloned)" };
+
+        // Determine display status (show "Not cloned" for uncloned forks)
+        let display_status = if !fork.is_cloned
+            && matches!(app.statuses[i], SyncStatus::Pending | SyncStatus::Checking)
+        {
+            "Not cloned".to_string()
+        } else {
+            app.statuses[i].display().to_string()
+        };
 
         let style = match &app.statuses[i] {
             SyncStatus::Synced => Style::default().fg(Color::Green),
@@ -151,15 +165,15 @@ fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
             | SyncStatus::Syncing
             | SyncStatus::Restoring
             | SyncStatus::Archiving => Style::default().fg(Color::Cyan),
-            SyncStatus::Pending if app.selected[i] => Style::default().fg(Color::White),
-            SyncStatus::Pending if !fork.is_cloned => Style::default().fg(Color::DarkGray),
+            SyncStatus::Pending if app.selected[i] => Style::default().fg(Color::White).bold(),
+            SyncStatus::Pending if !fork.is_cloned => Style::default().fg(Color::DarkGray).dim(),
             SyncStatus::Pending => Style::default().fg(Color::Reset),
         };
 
         Row::new(vec![
             status_icon,
-            Cell::from(format!("{repo_name}{cloned_indicator}")),
-            Cell::from(app.statuses[i].display().to_string()),
+            Cell::from(repo_name),
+            Cell::from(display_status),
         ])
         .style(style)
         .height(1)
@@ -180,9 +194,14 @@ fn render_fork_list(f: &mut Frame, app: &mut App, area: Rect) {
         ],
     )
     .header(header)
-    .block(Block::default().borders(Borders::ALL).title(title))
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .title(title),
+    )
     .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-    .highlight_symbol("> ");
+    .highlight_symbol("▶ ");
 
     f.render_stateful_widget(table, area, &mut app.state);
 }
@@ -269,7 +288,12 @@ fn render_details_pane(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let details = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title(" Details "))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .title(" Details "),
+        )
         .wrap(ratatui::widgets::Wrap { trim: true });
 
     f.render_widget(details, area);
@@ -278,7 +302,12 @@ fn render_details_pane(f: &mut Frame, app: &App, area: Rect) {
 fn render_search_input(f: &mut Frame, app: &App, area: Rect) {
     let input = Paragraph::new(format!("Search: {}_", app.search_query))
         .style(Style::default().fg(Color::Yellow))
-        .block(Block::default().borders(Borders::ALL).title(" Filter "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .title(" Filter "),
+        );
     f.render_widget(input, area);
 }
 
@@ -300,7 +329,11 @@ fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
 
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
-        .block(Block::default().borders(Borders::ALL));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
     f.render_widget(help, area);
 }
 
@@ -409,6 +442,7 @@ fn render_modal(f: &mut Frame, app: &App) {
     let modal = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .border_style(
                 Style::default().fg(if app.modal_action == ModalAction::Archive {
                     Color::Red
@@ -438,6 +472,7 @@ fn render_stats_overlay(f: &mut Frame, app: &App) {
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(Color::Cyan))
         .title(" Fork Statistics ");
 

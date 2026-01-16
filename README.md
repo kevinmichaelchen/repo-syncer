@@ -50,7 +50,7 @@ repo-syncer --yes
 # See what would happen without making changes
 repo-syncer --dry-run
 
-# Custom directory for cloned repos (default: ~/dev)
+# Custom directory for cloned repos (default: ~/dev/github.com)
 repo-syncer --tool-home ~/projects
 ```
 
@@ -142,12 +142,12 @@ The title bar shows cache status: `(cached)`, `(refreshing...)`, or `(offline)`.
 
 ## Configuration
 
-| Flag             | Env Var     | Default | Description                        |
-| ---------------- | ----------- | ------- | ---------------------------------- |
-| `--tool-home`    | `TOOL_HOME` | `~/dev` | Where repos are cloned             |
-| `--dry-run`      |             | `false` | Preview without changes            |
-| `--yes` `-y`     |             | `false` | Skip confirmation, sync all cloned |
-| `--refresh` `-r` |             | `false` | Force refresh from GitHub          |
+| Flag             | Env Var     | Default            | Description                        |
+| ---------------- | ----------- | ------------------ | ---------------------------------- |
+| `--tool-home`    | `TOOL_HOME` | `~/dev/github.com` | Where repos are cloned             |
+| `--dry-run`      |             | `false`            | Preview without changes            |
+| `--yes` `-y`     |             | `false`            | Skip confirmation, sync all cloned |
+| `--refresh` `-r` |             | `false`            | Force refresh from GitHub          |
 
 ## Project Structure
 

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[command(name = "repo-syncer")]
 #[command(about = "Interactive TUI to sync GitHub forks with their upstream repositories")]
 pub struct Args {
-    /// Home directory for cloned repos (default: $HOME/dev)
+    /// Home directory for cloned repos (default: $HOME/dev/github.com)
     #[arg(long, env = "TOOL_HOME")]
     pub tool_home: Option<PathBuf>,
 
