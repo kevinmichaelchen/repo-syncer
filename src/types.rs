@@ -96,7 +96,6 @@ pub enum Mode {
     ConfirmModal,
     ErrorPopup,
     Syncing,
-    Done,
 }
 
 // ============================================================

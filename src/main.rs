@@ -235,7 +235,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> 
                 }
             }
             if app.is_all_done() && app.mode == Mode::Syncing {
-                app.mode = Mode::Done;
+                // Automatically reset and return to selecting mode
+                app.reset_for_next_round();
+                app.mode = Mode::Selecting;
             }
         }
 
@@ -263,16 +265,6 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> 
                     Mode::ConfirmModal => handle_confirm_modal(app, key.code, &tx),
                     Mode::Syncing => match key.code {
                         KeyCode::Char('q') => return Ok(()),
-                        KeyCode::Down | KeyCode::Char('j') => app.next(),
-                        KeyCode::Up | KeyCode::Char('k') => app.previous(),
-                        _ => {}
-                    },
-                    Mode::Done => match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => return Ok(()),
-                        KeyCode::Char('r') => {
-                            app.reset_for_next_round();
-                            app.mode = Mode::Selecting;
-                        }
                         KeyCode::Down | KeyCode::Char('j') => app.next(),
                         KeyCode::Up | KeyCode::Char('k') => app.previous(),
                         _ => {}

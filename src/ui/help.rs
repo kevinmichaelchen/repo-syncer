@@ -19,7 +19,6 @@ pub fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
         Mode::ConfirmModal => "h/l or Tab: Switch | Enter: Select | Esc: Cancel",
         Mode::ErrorPopup => "Enter: Run action | Esc: Dismiss",
         Mode::Syncing => "j/k: Scroll | q: Quit",
-        Mode::Done => "r: Reset and continue | q: Quit",
     };
 
     let help = Paragraph::new(help_text)

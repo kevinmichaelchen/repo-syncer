@@ -41,10 +41,6 @@ pub fn render_title(f: &mut Frame, app: &App, area: Rect) {
                 total
             )
         }
-        Mode::Done => {
-            let (synced, skipped, failed) = app.summary();
-            format!(" Done! Synced: {synced} | Skipped: {skipped} | Failed: {failed} ")
-        }
     };
 
     let title_block = Paragraph::new(title)
