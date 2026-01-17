@@ -1,5 +1,5 @@
 use crate::github::truncate_error;
-use crate::types::{ErrorAction, ErrorDetails, Fork, SyncResult, SyncStatus};
+use crate::types::{ErrorDetails, Fork, SyncResult, SyncStatus};
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
@@ -94,7 +94,7 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
             Ok(output) => {
                 let err = String::from_utf8_lossy(&output.stderr).to_string();
 
-                // Check if this is a scope error - provide actionable fix
+                // Check if this is a scope error - show instructions
                 if err.contains("delete_repo") && err.contains("scope") {
                     // Reset to Pending so user can try again after adding scope
                     send(SyncStatus::Pending);
@@ -102,13 +102,11 @@ pub fn delete_fork_async(idx: usize, fork: Fork, dry_run: bool, tx: mpsc::Sender
                         title: "Missing GitHub Scope".to_string(),
                         message: format!(
                             "Cannot delete {repo}.\n\n\
-                            The 'delete_repo' scope is required to delete repositories.\n\
-                            Your current GitHub CLI token doesn't have this permission."
+                            The 'delete_repo' scope is required.\n\n\
+                            Exit the TUI (press q) and run:\n\n\
+                            gh auth refresh -h github.com -s delete_repo"
                         ),
-                        action: Some(ErrorAction {
-                            label: "Add delete_repo scope".to_string(),
-                            command: "gh auth refresh -h github.com -s delete_repo".to_string(),
-                        }),
+                        action: None,
                     }));
                 } else {
                     send(SyncStatus::Failed(truncate_error(&err)));
